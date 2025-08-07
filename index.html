@@ -30,7 +30,14 @@
 </head>
 <body class="bg-gray-100 text-gray-800 p-4 md:p-8">
 
-    <div class="max-w-screen-2xl mx-auto">
+    <div id="signin-container" class="text-center mt-20">
+        <button id="google-signin-btn" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition-colors">
+            Sign In with Google
+        </button>
+    </div>
+
+    <div id="main-content" class="max-w-screen-2xl mx-auto" style="display: none;">
+        
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 no-print gap-4">
             <div>
                 <select id="chore-block-select" class="text-2xl font-bold text-gray-900 border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></select>
@@ -166,29 +173,58 @@
         db = firebase.firestore();
         const choreRef = db.collection('app').doc('choreData');
 
-        auth.signInAnonymously().catch(error => console.error("Anonymous sign-in failed:", error));
+       // --- NEW JAVASCRIPT LOGIC ---
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                console.log("User is signed in anonymously.");
-                // Listen for real-time updates
-                choreRef.onSnapshot(doc => {
-                    if (doc.exists) {
-                        appData = doc.data();
-                        renderBoard();
-                    } else {
-                        // If no data, initialize with default and save to Firestore
-                        console.log("No data found in Firestore, initializing with default data.");
-                        appData = defaultAppData;
-                        saveData();
-                    }
-                }, err => {
-                    console.error("Error listening to chore data:", err);
-                });
-            } else {
-                console.log("User is signed out.");
-            }
+// Get references to our new UI elements
+const signInContainer = document.getElementById('signin-container');
+const mainContent = document.getElementById('main-content');
+
+// Create an instance of the Google provider object
+const provider = new firebase.auth.GoogleAuthProvider();
+
+// Listen for a click on our new sign-in button
+document.getElementById('google-signin-btn').addEventListener('click', () => {
+    // Start the sign-in process
+    auth.signInWithPopup(provider)
+        .catch(error => {
+            console.error("Google sign-in failed:", error);
+            alert("Sign-in failed. Please check the console for details.");
         });
+});
+
+// This listener now handles what to show when the user is signed in or out
+auth.onAuthStateChanged(user => {
+    if (user) {
+        // --- USER IS SIGNED IN ---
+        console.log("User is signed in:", user.displayName);
+        
+        // Hide the sign-in button and show the main chore chart
+        signInContainer.style.display = 'none';
+        mainContent.style.display = 'block';
+
+        // Now that we're signed in, start listening for chore data
+        choreRef.onSnapshot(doc => {
+            if (doc.exists) {
+                appData = doc.data();
+                renderBoard();
+            } else {
+                console.log("No data found in Firestore, initializing with default data.");
+                appData = defaultAppData;
+                saveData();
+            }
+        }, err => {
+            console.error("Error listening to chore data:", err);
+        });
+
+    } else {
+        // --- USER IS SIGNED OUT ---
+        console.log("User is signed out.");
+
+        // Show the sign-in button and hide the main chore chart
+        signInContainer.style.display = 'block';
+        mainContent.style.display = 'none';
+    }
+});
 
         // --- CORE LOGIC & UTILITIES ---
         function saveData() {
