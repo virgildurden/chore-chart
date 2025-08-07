@@ -195,22 +195,39 @@
 
         auth.onAuthStateChanged(user => {
             if (user) {
-                console.log("User is signed in:", user.displayName);
-                signInContainer.style.display = 'none';
-                mainContent.style.display = 'block';
-                choreRef.onSnapshot(doc => {
-                    if (doc.exists) {
-                        appData = doc.data();
-                        renderBoard();
-                    } else {
-                        console.log("No data found in Firestore, initializing with default data.");
-                        appData = defaultAppData;
-                        saveData();
-                    }
-                }, err => {
-                    console.error("Error listening to chore data:", err);
-                });
+                // --- USER IS SIGNED IN ---
+                console.log("User is signed in:", user.displayName, user.email);
+                
+                // Define the list of authorized users
+                const authorizedEmails = ['virgil.durden@gmail.com', 'ajcasey77@gmail.com'];
+
+                // Check if the signed-in user's email is in the list
+                if (authorizedEmails.includes(user.email)) {
+                    // --- USER IS AUTHORIZED ---
+                    signInContainer.style.display = 'none';
+                    mainContent.style.display = 'block';
+
+                    choreRef.onSnapshot(doc => {
+                        if (doc.exists) {
+                            appData = doc.data();
+                            renderBoard();
+                        } else {
+                            console.log("No data found, initializing with default data.");
+                            appData = defaultAppData;
+                            saveData();
+                        }
+                    }, err => {
+                        console.error("Error listening to chore data:", err);
+                    });
+                } else {
+                    // --- USER IS NOT AUTHORIZED ---
+                    console.warn("Unauthorized user signed in:", user.email);
+                    alert("You are not authorized to access this application.");
+                    auth.signOut(); // Automatically sign them out
+                }
+
             } else {
+                // --- USER IS SIGNED OUT ---
                 console.log("User is signed out.");
                 signInContainer.style.display = 'block';
                 mainContent.style.display = 'none';
