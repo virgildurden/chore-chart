@@ -187,7 +187,7 @@
 
         auth.onAuthStateChanged(user => {
             if (user) {
-                const authorizedEmails = ['virgil.durden@gmail.com', 'your.wife@example.com'];
+                const authorizedEmails = ['virgil.durden@gmail.com', 'ajcasey77@gmail.com'];
                 if (authorizedEmails.includes(user.email)) {
                     signInContainer.style.display = 'none';
                     mainContent.classList.remove('hidden');
