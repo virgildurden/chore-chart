@@ -13,10 +13,9 @@
     <style>
         body { font-family: 'Lexend', sans-serif; }
         
-        /* --- Main App Styles --- */
         #columns-container { gap: 0; }
-        .child-column { border-right: 1px solid #e5e7eb; }
-        .child-column:last-child { border-right: none; }
+        .child-column, .room-column { border-right: 1px solid #e5e7eb; }
+        .child-column:last-child, .room-column:last-child { border-right: none; }
         .chore-item {
             border-radius: 0;
             box-shadow: none;
@@ -30,38 +29,14 @@
         .day-btn { transition: background-color 0.2s, color 0.2s, border-color 0.2s; }
         .hidden { display: none; }
 
-        /* --- Print-Specific Styles --- */
         @media print {
-            body { 
-                -webkit-print-color-adjust: exact; 
-                color-adjust: exact; 
-                background-color: white !important;
-            }
+            body { -webkit-print-color-adjust: exact; color-adjust: exact; background-color: white !important; }
             .no-print { display: none !important; }
-            #chore-board { 
-                box-shadow: none !important; 
-                border: none !important; 
-                padding: 0 !important;
-            }
-            #columns-container {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr); /* Creates two columns */
-                gap: 20px; /* Adds a gap between the two columns */
-            }
-            .child-column { 
-                page-break-inside: avoid; /* Tries to keep a child's list from splitting across pages */
-                border: none !important; 
-                background-color: white !important;
-                padding: 0 !important;
-            }
-            .chore-list {
-                space-y-1.5: 0 !important; /* Removes space between chore items for print */
-            }
-            .chore-item { 
-                border: none;
-                border-top: 1px solid #374151; /* dark gray separator */
-                padding: 4px 0;
-            }
+            #main-content { display: none !important; }
+            #print-container { display: block !important; }
+            #print-columns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+            .print-child-column { page-break-inside: avoid; }
+            .print-chore-item { border-top: 1px solid #374151; padding: 4px 0; }
         }
     </style>
 </head>
@@ -74,31 +49,27 @@
     </div>
 
     <div id="main-content" class="max-w-screen-2xl mx-auto hidden">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 no-print gap-4">
-            <div>
-                <select id="chore-block-select" class="text-2xl font-bold text-gray-900 border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></select>
-                <p id="chore-block-header" class="text-lg text-gray-600 mt-1">
-                    Time Range: <span id="start-time" contenteditable="true" class="font-semibold px-1 rounded-md"></span>-<span id="end-time" contenteditable="true" class="font-semibold px-1 rounded-md"></span>
-                </p>
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 no-print gap-4">
+            <div class="flex items-center gap-4">
+                <button id="view-toggle-btn" class="bg-white text-black font-bold py-2 px-4 rounded-none border border-black">Switch to Room View</button>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="chore-block-btn" class="bg-white text-black font-bold py-2 px-4 rounded-none border border-black"></button>
             </div>
             <div class="flex space-x-2">
-                 <button id="open-add-modal-btn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors">
-                    Add New Chore
-                </button>
-                <button onclick="window.print()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                    Print Chores
-                </button>
+                 <button id="open-add-modal-btn" class="bg-white text-black font-bold py-2 px-4 rounded-none border border-black">Add Chore</button>
+                <button onclick="prepareAndPrint()" class="bg-white text-black font-bold py-2 px-4 rounded-none border border-black">Print</button>
+                <button id="export-csv-btn" class="bg-white text-black font-bold py-2 px-4 rounded-none border border-black">Export All</button>
             </div>
         </div>
 
         <div id="chore-board" class="chore-board bg-white p-4 sm:p-6 rounded-2xl shadow-lg">
-            <div id="columns-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-                <!-- Child columns will be dynamically inserted here -->
-            </div>
+            <div id="columns-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"></div>
         </div>
     </div>
 
-    <!-- Add/Edit Chore Modal -->
+    <div id="print-container" class="hidden"></div>
+
     <div id="chore-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full no-print z-50">
         <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
             <div class="mt-3">
@@ -113,6 +84,11 @@
                     <div>
                         <label for="modal-task-input" class="text-sm font-medium text-gray-700 block">Chore Description</label>
                         <textarea id="modal-task-input" name="task" rows="2" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required></textarea>
+                    </div>
+                    <div>
+                        <label for="modal-room-select" class="text-sm font-medium text-gray-700 block">Room</label>
+                        <select id="modal-room-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select>
+                        <input type="text" id="modal-new-room-input" placeholder="Enter new room name" class="hidden mt-2 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -149,13 +125,25 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
+    <div id="chore-block-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full no-print z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center">Select Chore Block</h3>
+                <div id="chore-block-list" class="mt-4 space-y-2"></div>
+                <div class="mt-4">
+                    <input type="text" id="new-chore-block-input" placeholder="New chore block name" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <button id="add-chore-block-btn" class="mt-2 w-full px-4 py-2 bg-green-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">Add New Block</button>
+                </div>
+                <button id="close-chore-block-modal-btn" class="mt-4 w-full text-sm text-gray-500 hover:text-gray-700 text-center">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
 
     <script id="app-script">
-        // --- FIREBASE CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyCXWZN9QZkIqXyx234nBOTI3M7rcGNU9p8",
             authDomain: "casey-family-chores.firebaseapp.com",
@@ -165,25 +153,18 @@
             appId: "1:211060942093:web:83973adc673dcfd1f77c44"
         };
         
-        let defaultAppData; 
-        let appData = null;
-        let draggedChore = null;
-        let db;
+        let appData = null, draggedChore = null, db, currentView = 'child';
 
-        // --- FIREBASE INITIALIZATION ---
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         db = firebase.firestore();
         const choreRef = db.collection('app').doc('choreData');
 
-        // --- AUTHENTICATION LOGIC ---
         const signInContainer = document.getElementById('signin-container');
         const mainContent = document.getElementById('main-content');
         const provider = new firebase.auth.GoogleAuthProvider();
 
-        document.getElementById('google-signin-btn').addEventListener('click', () => {
-            auth.signInWithPopup(provider).catch(error => console.error("Google sign-in failed:", error));
-        });
+        document.getElementById('google-signin-btn').addEventListener('click', () => auth.signInWithPopup(provider).catch(console.error));
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -192,21 +173,20 @@
                     signInContainer.style.display = 'none';
                     mainContent.classList.remove('hidden');
                     choreRef.onSnapshot(doc => {
-                        if (doc.exists) {
+                        if (doc.exists) { 
                             appData = doc.data();
-                            renderBoard();
-                        } else {
-                            defaultAppData = {
-                                children: [ { id: 'tristan', name: 'Tristan', color: '#F97316' }, { id: 'dylan', name: 'Dylan', color: '#3B82F6' }, { id: 'william', name: 'William', color: '#22C55E' }, { id: 'vivian', name: 'Vivian', color: '#EC4899' }, { id: 'eleanor', name: 'Eleanor', color: '#8B5CF6' }, { id: 'nathan', name: 'Nathan', color: '#6B7280' } ],
-                                activeBlockId: 'block1',
-                                choreBlocks: [ { id: 'block1', title: 'Block 1: Morning Chores', startTime: '6:00', endTime: '7:00', chores: {} } ]
-                            };
-                            appData = defaultAppData;
-                            saveData();
+                            if (!appData.choreBlocks || appData.choreBlocks.length === 0) {
+                                const defaultBlock = { id: 'b' + Date.now(), title: 'Default Block', chores: {} };
+                                appData.choreBlocks = [defaultBlock];
+                                appData.activeBlockId = defaultBlock.id;
+                            } else if (!appData.activeBlockId || !appData.choreBlocks.find(b => b.id === appData.activeBlockId)) {
+                                appData.activeBlockId = appData.choreBlocks[0].id;
+                            }
+                            renderBoard(); 
                         }
-                    }, err => console.error("Error listening to chore data:", err));
+                    }, console.error);
                 } else {
-                    alert("You are not authorized to access this application.");
+                    alert("You are not authorized.");
                     auth.signOut();
                 }
             } else {
@@ -215,82 +195,103 @@
             }
         });
 
-        // --- CORE LOGIC & UTILITIES ---
-        function saveData() { if (auth.currentUser) { choreRef.set(appData).catch(error => console.error("Error writing document: ", error)); } }
-        function getActiveBlock() { if (!appData) return null; return appData.choreBlocks.find(b => b.id === appData.activeBlockId); }
-        function timeToMinutes(timeStr) { if (!timeStr || !timeStr.includes(':')) return 0; const [hours, minutes] = timeStr.split(':').map(Number); return (hours * 60) + minutes; }
-        function minutesToTime(totalMinutes) { const hours = Math.floor(totalMinutes / 60); const minutes = totalMinutes % 60; return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`; }
-        function formatTime(timeStr) { if (!timeStr || !timeStr.includes(':')) return ''; let [hours, minutes] = timeStr.split(':'); return `${parseInt(hours, 10)}:${minutes}`; }
-        function recalculateTimes(childId) { const block = getActiveBlock(); if (!block) return; const chores = block.chores[childId]; if (!chores || chores.length === 0) return; for (let i = 1; i < chores.length; i++) { const prevChore = chores[i - 1]; const prevStartTimeMinutes = timeToMinutes(prevChore.time); const prevDurationMinutes = parseInt(prevChore.duration, 10) || 0; chores[i].time = minutesToTime(prevStartTimeMinutes + prevDurationMinutes); } }
+        function saveData() { if (auth.currentUser) choreRef.set(appData).catch(console.error); }
+        function getActiveBlock() { return appData ? appData.choreBlocks.find(b => b.id === appData.activeBlockId) : null; }
+        function timeToMinutes(t) { if (!t || !t.includes(':')) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+        function minutesToTime(m) { return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+        function formatTime(t) { if (!t || !t.includes(':')) return ''; let [h, m] = t.split(':'); return `${parseInt(h,10)}:${m}`; }
+        function recalculateTimes(childId) { const block = getActiveBlock(); if (!block) return; const chores = block.chores[childId]; if (!chores || chores.length === 0) return; for (let i = 1; i < chores.length; i++) { const prevChore = chores[i - 1]; const prevStartTimeMinutes = timeToMinutes(prevChore.time); const prevDurationMinutes = parseInt(prevChore.duration, 10) || 0; chores[i].time = minutesToTime(prevStartTimeMinutes + prevDurationMinutes); } } 
         function recalculateFollowingChores(childId, startIndex) { const block = getActiveBlock(); if (!block) return; const chores = block.chores[childId]; if (!chores || chores.length < 2) return; for (let i = startIndex + 1; i < chores.length; i++) { const prevChore = chores[i - 1]; const prevStartTimeMinutes = timeToMinutes(prevChore.time); const prevDurationMinutes = parseInt(prevChore.duration, 10) || 0; chores[i].time = minutesToTime(prevStartTimeMinutes + prevDurationMinutes); } }
-        function calculateTotalDuration(childId) { const block = getActiveBlock(); if (!block) return 0; const chores = block.chores[childId] || []; return chores.reduce((total, chore) => total + (parseInt(chore.duration, 10) || 0), 0); }
-        function checkAllOverages() { const block = getActiveBlock(); if (!block) return; const totalBlockMinutes = timeToMinutes(block.endTime) - timeToMinutes(block.startTime); appData.children.forEach(child => { const childsTotalDuration = calculateTotalDuration(child.id); const warningIcon = document.getElementById(`warning-${child.id}`); if (warningIcon) { warningIcon.classList.toggle('hidden', childsTotalDuration <= totalBlockMinutes); } }); }
-        function updateChoreBlockHeader() { const block = getActiveBlock(); if (!block) return; document.getElementById('start-time').innerText = block.startTime; document.getElementById('end-time').innerText = block.endTime; }
-        function populateBlockSelector() { const select = document.getElementById('chore-block-select'); select.innerHTML = ''; appData.choreBlocks.forEach(block => { const option = document.createElement('option'); option.value = block.id; option.textContent = block.title; if (block.id === appData.activeBlockId) { option.selected = true; } select.appendChild(option); }); }
-
+        
         function renderBoard() {
             if (!appData) return;
-            populateBlockSelector();
-            updateChoreBlockHeader();
+            updateChoreBlockButton();
+            if (currentView === 'child') {
+                renderChildView();
+            } else {
+                renderRoomView();
+            }
+            addEventListeners();
+        }
+
+        function renderChildView() {
             const container = document.getElementById('columns-container');
             container.innerHTML = '';
+            container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6';
             const block = getActiveBlock();
             if (!block) return;
+
             appData.children.forEach(child => {
                 const column = document.createElement('div');
-                column.id = `column-${child.id}`;
                 column.className = 'child-column bg-gray-50 p-2 flex flex-col space-y-2';
                 column.dataset.childId = child.id;
-                column.innerHTML = `
-                    <h2 class="text-lg font-bold text-center text-white p-2 flex items-center justify-center" style="background-color: ${child.color};">
-                        ${child.name}
-                        <span id="warning-${child.id}" class="warning-icon hidden ml-2" title="Chores exceed available time!">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                        </span>
-                    </h2>
-                    <div id="chores-${child.id}" class="chore-list flex-grow min-h-[200px]"></div>
-                    <button class="add-chore-btn no-print mt-2 w-full bg-gray-200 text-gray-700 font-semibold py-1.5 px-2 rounded-lg hover:bg-gray-300 transition-colors text-sm" data-child-id="${child.id}">+ Add Chore</button>
-                `;
+                column.innerHTML = `<h2 class="text-lg font-bold text-center text-white p-2" style="background-color: ${child.color};">${child.name}</h2><div id="chores-${child.id}" class="chore-list flex-grow min-h-[200px]"></div><button class="add-chore-btn no-print mt-2 w-full bg-gray-200 text-gray-700 font-semibold py-1.5 px-2 rounded-lg" data-child-id="${child.id}">+ Add</button>`;
+                
                 const choreList = column.querySelector(`#chores-${child.id}`);
+                if (block.chores && block.chores[child.id]) {
+                    block.chores[child.id].forEach(chore => choreList.appendChild(createChoreElement(chore, child.id)));
+                }
+                container.appendChild(column);
+            });
+        }
+
+        function renderRoomView() {
+            const container = document.getElementById('columns-container');
+            container.innerHTML = '';
+            container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
+            const block = getActiveBlock();
+            if (!block || !block.chores) return;
+
+            const choresByRoom = {};
+            appData.children.forEach(child => {
                 (block.chores[child.id] || []).forEach(chore => {
-                    choreList.appendChild(createChoreElement(chore, child.id));
+                    const room = chore.room || 'Unassigned';
+                    if (!choresByRoom[room]) {
+                        choresByRoom[room] = [];
+                    }
+                    choresByRoom[room].push({ ...chore, childName: child.name, childColor: child.color });
+                });
+            });
+
+            Object.keys(choresByRoom).sort().forEach(room => {
+                const column = document.createElement('div');
+                column.className = 'room-column bg-gray-50 p-2 flex flex-col space-y-2';
+                column.innerHTML = `<h2 class="text-lg font-bold text-center text-gray-800 bg-gray-200 p-2">${room}</h2><div class="chore-list flex-grow min-h-[200px]"></div>`;
+                
+                const choreList = column.querySelector('.chore-list');
+                choresByRoom[room].sort((a,b) => timeToMinutes(a.time) - timeToMinutes(b.time)).forEach(chore => {
+                    choreList.appendChild(createChoreElement(chore, null, true));
                 });
                 container.appendChild(column);
             });
-            checkAllOverages();
-            addEventListeners();
         }
         
         function formatDays(daysArray) {
+            if (!daysArray || daysArray.every(d => d)) return '';
             const dayLabels = ['m', 't', 'w', 'th', 'f', 'sa', 'su'];
-            if (!daysArray || !Array.isArray(daysArray) || daysArray.every(d => d)) return '';
-            const weekdays = daysArray.slice(0, 5);
-            const weekends = daysArray.slice(5, 7);
-            if (weekdays.every(d => d) && weekends.every(d => !d)) return 'Weekdays';
-            if (weekdays.every(d => !d) && weekends.every(d => d)) return 'Weekends';
             return daysArray.map((isSelected, i) => isSelected ? dayLabels[i] : null).filter(Boolean).join(', ') || '';
         }
 
-        function createChoreElement(chore, childId) {
+        function createChoreElement(chore, childId, isRoomView = false) {
             const choreItem = document.createElement('div');
             choreItem.id = chore.id;
             choreItem.className = 'chore-item bg-white cursor-pointer hover:bg-gray-50';
             choreItem.dataset.choreId = chore.id;
-            choreItem.dataset.childId = childId;
+            choreItem.dataset.childId = childId || appData.children.find(c => c.name === chore.childName)?.id;
+
+            let assignedToHtml = '';
+            if (isRoomView) {
+                assignedToHtml = `<div class="text-xs font-bold" style="color: ${chore.childColor};">${chore.childName}</div>`;
+            }
+
             choreItem.innerHTML = `
-                <!-- Screen View (hidden on print) -->
-                <div class="hidden sm:block print:hidden">
+                <div class="block sm:block print:hidden">
                     <div class="flex justify-between items-center text-xs">
                         <div class="chore-time font-medium text-gray-600">${formatTime(chore.time)}</div>
+                        ${assignedToHtml}
                         <div class="days-display text-gray-400 font-medium">${formatDays(chore.days)}</div>
                     </div>
                     <p class="chore-task text-gray-800 text-sm mt-1">${chore.task}</p>
-                </div>
-                <!-- Print View (only visible on print) -->
-                <div class="hidden print:flex items-baseline text-sm">
-                    <span class="chore-time font-medium text-gray-600 w-12">${formatTime(chore.time)}</span>
-                    <span class="chore-task text-gray-800 flex-1">${chore.task}</span>
-                    <span class="days-display text-gray-500 text-xs ml-2">${formatDays(chore.days)}</span>
                 </div>
             `;
             return choreItem;
@@ -300,27 +301,83 @@
             document.querySelectorAll('.chore-item').forEach(i => { 
                 i.addEventListener('click', (e) => openEditModal(e.currentTarget.dataset.childId, e.currentTarget.dataset.choreId));
                 i.draggable = true;
-                i.addEventListener('dragstart', handleDragStart); 
-                i.addEventListener('dragend', handleDragEnd); 
+                i.addEventListener('dragstart', handleDragStart); i.addEventListener('dragend', handleDragEnd); 
             });
-            document.querySelectorAll('.chore-list').forEach(l => { l.addEventListener('dragover', handleDragOver); l.addEventListener('dragleave', handleDragLeave); l.addEventListener('drop', handleDrop); });
-            document.querySelectorAll('[contenteditable="true"]').forEach(f => { f.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }); });
-            document.getElementById('start-time').addEventListener('blur', handleTimeRangeEdit);
-            document.getElementById('end-time').addEventListener('blur', handleTimeRangeEdit);
+            document.querySelectorAll('.child-column .chore-list').forEach(l => { l.addEventListener('dragover', handleDragOver); l.addEventListener('dragleave', handleDragLeave); l.addEventListener('drop', handleDrop); });
             document.querySelectorAll('.add-chore-btn').forEach(b => b.addEventListener('click', (e) => openAddModal(e.currentTarget.dataset.childId)));
             document.getElementById('open-add-modal-btn').addEventListener('click', () => openAddModal());
             document.getElementById('close-modal-btn').addEventListener('click', closeModal);
             document.getElementById('chore-form').addEventListener('submit', handleSaveChore);
             document.getElementById('delete-chore-btn').addEventListener('click', handleDeleteChoreFromModal);
-            document.getElementById('chore-block-select').addEventListener('change', handleBlockChange);
+            document.getElementById('export-csv-btn').addEventListener('click', exportToCSV);
+            document.getElementById('modal-room-select').addEventListener('change', handleRoomSelectChange);
+            document.getElementById('view-toggle-btn').addEventListener('click', handleViewToggle);
+            document.getElementById('chore-block-btn').addEventListener('click', openChoreBlockModal);
+            document.getElementById('close-chore-block-modal-btn').addEventListener('click', closeChoreBlockModal);
+            document.getElementById('add-chore-block-btn').addEventListener('click', handleAddChoreBlock);
+        }
+
+        function handleViewToggle() {
+            const toggleBtn = document.getElementById('view-toggle-btn');
+            currentView = (currentView === 'child') ? 'room' : 'child';
+            toggleBtn.textContent = (currentView === 'child') ? 'Switch to Room View' : 'Switch to Child View';
+            renderBoard();
+        }
+
+        function getAllUniqueRooms() {
+            const rooms = new Set();
+            if (appData && appData.choreBlocks) {
+                appData.choreBlocks.forEach(block => {
+                    if (block.chores) Object.values(block.chores).flat().forEach(chore => { if (chore.room) rooms.add(chore.room); });
+                });
+            }
+            return Array.from(rooms).sort();
+        }
+
+        function populateRoomSelector(currentRoom = '') {
+            const roomSelect = document.getElementById('modal-room-select');
+            const newRoomInput = document.getElementById('modal-new-room-input');
+            const uniqueRooms = getAllUniqueRooms();
+            roomSelect.innerHTML = '';
+            uniqueRooms.forEach(room => {
+                const option = document.createElement('option');
+                option.value = room; option.textContent = room;
+                roomSelect.appendChild(option);
+            });
+            const newRoomOption = document.createElement('option');
+            newRoomOption.value = '__new__'; newRoomOption.textContent = '... (Add a new room)';
+            roomSelect.appendChild(newRoomOption);
+            if (currentRoom && uniqueRooms.includes(currentRoom)) {
+                roomSelect.value = currentRoom;
+                newRoomInput.classList.add('hidden');
+            } else if (currentRoom) {
+                roomSelect.value = '__new__';
+                newRoomInput.value = currentRoom;
+                newRoomInput.classList.remove('hidden');
+            } else {
+                roomSelect.value = uniqueRooms.length > 0 ? uniqueRooms[0] : '__new__';
+                handleRoomSelectChange();
+            }
+        }
+
+        function handleRoomSelectChange() {
+            const roomSelect = document.getElementById('modal-room-select');
+            const newRoomInput = document.getElementById('modal-new-room-input');
+            if (roomSelect.value === '__new__') {
+                newRoomInput.classList.remove('hidden');
+                newRoomInput.value = '';
+                newRoomInput.focus();
+            } else {
+                newRoomInput.classList.add('hidden');
+            }
         }
 
         function openAddModal(childId = null) {
-            const modal = document.getElementById('chore-modal');
             const form = document.getElementById('chore-form');
             form.reset();
             document.getElementById('modal-title').textContent = 'Add New Chore';
             document.getElementById('edit-chore-id').value = '';
+            populateRoomSelector();
             const childSelectContainer = document.getElementById('modal-child-select-container');
             const childSelect = document.getElementById('modal-child-select');
             if (childId) {
@@ -329,10 +386,9 @@
             } else {
                 childSelectContainer.classList.remove('hidden');
                 childSelect.innerHTML = '';
-                appData.children.forEach(child => {
+                appData.children.forEach(c => {
                     const option = document.createElement('option');
-                    option.value = child.id;
-                    option.textContent = child.name;
+                    option.value = c.id; option.textContent = c.name;
                     childSelect.appendChild(option);
                 });
                 document.getElementById('edit-child-id').value = childSelect.value;
@@ -342,20 +398,16 @@
             daySelector.innerHTML = '';
             days.forEach((day, index) => {
                 const button = document.createElement('button');
-                button.type = 'button';
-                button.textContent = day;
-                button.dataset.dayIndex = index;
-                button.className = 'day-btn border rounded-md py-2 text-sm font-medium bg-white text-gray-700 hover:bg-gray-50';
-                button.classList.add('selected');
+                button.type = 'button'; button.textContent = day; button.dataset.dayIndex = index;
+                button.className = 'day-btn border rounded-md py-2 text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 selected';
                 button.addEventListener('click', () => button.classList.toggle('selected'));
                 daySelector.appendChild(button);
             });
             document.getElementById('delete-chore-btn').classList.add('hidden');
-            modal.classList.remove('hidden');
+            document.getElementById('chore-modal').classList.remove('hidden');
         }
 
         function openEditModal(childId, choreId) {
-            const modal = document.getElementById('chore-modal');
             const form = document.getElementById('chore-form');
             const block = getActiveBlock();
             const chore = block.chores[childId].find(c => c.id === choreId);
@@ -367,46 +419,20 @@
             form.elements.time.value = chore.time;
             form.elements.duration.value = chore.duration;
             document.getElementById('modal-child-select-container').classList.add('hidden');
+            populateRoomSelector(chore.room || '');
             const daySelector = document.getElementById('day-selector');
             const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
             daySelector.innerHTML = '';
-            (chore.days || [true,true,true,true,true,true,true]).forEach((isSelected, index) => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.textContent = days[index];
-                button.dataset.dayIndex = index;
+            (chore.days || Array(7).fill(true)).forEach((isSelected, index) => {
+                 const button = document.createElement('button');
+                button.type = 'button'; button.textContent = days[index]; button.dataset.dayIndex = index;
                 button.className = 'day-btn border rounded-md py-2 text-sm font-medium bg-white text-gray-700 hover:bg-gray-50';
                 if (isSelected) button.classList.add('selected');
                 button.addEventListener('click', () => button.classList.toggle('selected'));
                 daySelector.appendChild(button);
             });
             document.getElementById('delete-chore-btn').classList.remove('hidden');
-            modal.classList.remove('hidden');
-        }
-
-        function closeModal() { document.getElementById('chore-modal').classList.add('hidden'); }
-        function handleBlockChange(e) { appData.activeBlockId = e.target.value; saveData(); }
-
-        function handleTimeRangeEdit(e) {
-            const block = getActiveBlock();
-            if (!block) return;
-            const field = e.target.id === 'start-time' ? 'startTime' : 'endTime';
-            const newTime = e.target.innerText.trim();
-            if (/^\d{1,2}:\d{2}$/.test(newTime)) {
-                block[field] = newTime;
-                if (field === 'startTime') {
-                    appData.children.forEach(child => {
-                        const choreList = block.chores[child.id];
-                        if (choreList && choreList.length > 0) {
-                            choreList[0].time = newTime;
-                            recalculateTimes(child.id);
-                        }
-                    });
-                }
-                saveData();
-            } else {
-                e.target.innerText = block[field];
-            }
+            document.getElementById('chore-modal').classList.remove('hidden');
         }
 
         function handleSaveChore(e) {
@@ -417,107 +443,217 @@
             const choreId = document.getElementById('edit-chore-id').value;
             let childId = document.getElementById('edit-child-id').value;
             const task = form.elements.task.value;
+            let room = document.getElementById('modal-room-select').value;
+            if (room === '__new__') { room = document.getElementById('modal-new-room-input').value.trim(); }
             const time = form.elements.time.value;
             const duration = parseInt(form.elements.duration.value, 10) || 0;
             const savedChoreId = choreId || 'c' + Date.now();
             const selectedDays = Array.from(document.querySelectorAll('#day-selector .day-btn')).map(btn => btn.classList.contains('selected'));
             if (!task.trim()) return;
+
+            const updatedChoreData = { task, room, time, duration, days: selectedDays };
+
             if (choreId) {
                 const choreList = block.chores[childId];
-                const choreIndex = choreList.findIndex(c => c.id === choreId);
-                if (choreIndex > -1) {
-                    const chore = choreList[choreIndex];
-                    chore.task = task; chore.time = time; chore.duration = duration; chore.days = selectedDays;
-                }
+                const chore = choreList.find(c => c.id === choreId);
+                if (chore) Object.assign(chore, updatedChoreData);
             } else {
                 childId = document.getElementById('modal-child-select').value;
-                const newChore = { id: savedChoreId, time, duration, task, days: selectedDays };
+                const newChore = { id: savedChoreId, ...updatedChoreData };
                 if (!block.chores[childId]) block.chores[childId] = [];
                 block.chores[childId].push(newChore);
             }
+            
             block.chores[childId].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
             const savedChoreIndex = block.chores[childId].findIndex(c => c.id === savedChoreId);
             recalculateFollowingChores(childId, savedChoreIndex);
             closeModal();
             saveData();
         }
-        
-        function handleDragStart(e) { draggedChore = { choreId: e.target.id, sourceChildId: e.target.closest('.child-column').dataset.childId }; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
-        function handleDragEnd(e) { e.target.classList.remove('dragging'); draggedChore = null; }
-        function handleDragOver(e) { e.preventDefault(); e.currentTarget.closest('.child-column').classList.add('drag-over'); }
-        function handleDragLeave(e) { e.currentTarget.closest('.child-column').classList.remove('drag-over'); }
+
+        function closeModal() {
+            document.getElementById('chore-modal').classList.add('hidden');
+            document.getElementById('confirm-modal').classList.add('hidden');
+            document.getElementById('chore-block-modal').classList.add('hidden');
+        }
+
+        function handleDeleteChoreFromModal() {
+            const confirmModal = document.getElementById('confirm-modal');
+            confirmModal.classList.remove('hidden');
+            
+            document.getElementById('confirm-ok-btn').onclick = () => {
+                const choreId = document.getElementById('edit-chore-id').value;
+                const childId = document.getElementById('edit-child-id').value;
+                const block = getActiveBlock();
+                if (block && block.chores[childId]) {
+                    const choreIndex = block.chores[childId].findIndex(c => c.id === choreId);
+                    if (choreIndex > -1) {
+                        block.chores[childId].splice(choreIndex, 1);
+                        recalculateFollowingChores(childId, choreIndex - 1);
+                        saveData();
+                    }
+                }
+                closeModal();
+            };
+
+            document.getElementById('confirm-cancel-btn').onclick = () => {
+                confirmModal.classList.add('hidden');
+            };
+        }
+
+        function handleDragStart(e) {
+            draggedChore = e.target;
+            e.dataTransfer.setData('text/plain', e.target.id);
+            setTimeout(() => e.target.classList.add('dragging'), 0);
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedChore = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
 
         function handleDrop(e) {
             e.preventDefault();
-            const block = getActiveBlock();
-            if (!block) return;
-            const dropList = e.currentTarget;
-            dropList.closest('.child-column').classList.remove('drag-over');
-            if (!draggedChore) return;
-            const targetChildId = dropList.closest('.child-column').dataset.childId;
-            const { choreId, sourceChildId } = draggedChore;
-            const sourceChores = block.chores[sourceChildId];
-            const choreIndex = sourceChores.findIndex(c => c.id === choreId);
-            if (choreIndex === -1) return;
-            const [movedChore] = sourceChores.splice(choreIndex, 1);
-            const targetChores = block.chores[targetChildId] || [];
-            const afterElement = [...dropList.querySelectorAll('.chore-item:not(.dragging)')].reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = e.clientY - box.top - box.height / 2;
-                return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-            if (afterElement == null) {
-                targetChores.push(movedChore);
+            e.currentTarget.classList.remove('drag-over');
+            
+            const choreId = e.dataTransfer.getData('text/plain');
+            const fromChildId = draggedChore.dataset.childId;
+            const toChildId = e.currentTarget.closest('.child-column').dataset.childId;
+
+            if (fromChildId === toChildId) {
+                const choreEl = document.getElementById(choreId);
+                const afterElement = getDragAfterElement(e.currentTarget, e.clientY);
+                if (afterElement == null) {
+                    e.currentTarget.appendChild(choreEl);
+                } else {
+                    e.currentTarget.insertBefore(choreEl, afterElement);
+                }
             } else {
-                const insertIndex = targetChores.findIndex(c => c.id === afterElement.id);
-                targetChores.splice(insertIndex, 0, movedChore);
+                const choreEl = document.getElementById(choreId);
+                e.currentTarget.appendChild(choreEl);
+                draggedChore.dataset.childId = toChildId;
             }
-            if (!block.chores[targetChildId]) block.chores[targetChildId] = targetChores;
-            recalculateTimes(sourceChildId);
-            recalculateTimes(targetChildId);
+
+            const block = getActiveBlock();
+            const fromChores = block.chores[fromChildId];
+            const choreIndex = fromChores.findIndex(c => c.id === choreId);
+            const [chore] = fromChores.splice(choreIndex, 1);
+            
+            if (!block.chores[toChildId]) block.chores[toChildId] = [];
+            const toChores = block.chores[toChildId];
+
+            const afterElement = getDragAfterElement(e.currentTarget, e.clientY);
+            if (afterElement == null) {
+                toChores.push(chore);
+            } else {
+                const afterChoreId = afterElement.dataset.choreId;
+                const insertIndex = toChores.findIndex(c => c.id === afterChoreId);
+                toChores.splice(insertIndex, 0, chore);
+            }
+            
+            recalculateTimes(fromChildId);
+            recalculateTimes(toChildId);
             saveData();
         }
-        
-        function handleDeleteChoreFromModal() {
-            const choreId = document.getElementById('edit-chore-id').value;
-            const childId = document.getElementById('edit-child-id').value;
-            if (!choreId || !childId) return;
-            const confirmModal = document.getElementById('confirm-modal');
-            const confirmOkBtn = document.getElementById('confirm-ok-btn');
-            const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
-            confirmModal.classList.remove('hidden');
-            const onConfirm = () => {
-                const block = getActiveBlock();
-                if (!block) return;
-                const choreList = block.chores[childId];
-                const choreIndex = choreList.findIndex(c => c.id === choreId);
-                if (choreIndex > -1) {
-                    choreList.splice(choreIndex, 1);
-                    recalculateTimes(childId);
-                    closeModal();
-                    saveData();
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.chore-item:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
                 }
-                cleanup();
-            };
-            const cleanup = () => {
-                confirmModal.classList.add('hidden');
-                confirmOkBtn.removeEventListener('click', onConfirm);
-                confirmCancelBtn.removeEventListener('click', cleanup);
-            };
-            confirmOkBtn.addEventListener('click', onConfirm);
-            confirmCancelBtn.addEventListener('click', cleanup);
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
-        // --- PWA Service Worker Registration ---
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(registration => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                }, err => {
-                    console.log('ServiceWorker registration failed: ', err);
+        function exportToCSV() {
+            const block = getActiveBlock();
+            if (!block) return;
+            let csvContent = "data:text/csv;charset=utf-8,Child,Chore,Room,Time,Duration,Days\n";
+            appData.children.forEach(child => {
+                (block.chores[child.id] || []).forEach(chore => {
+                    const days = (chore.days || []).map((d, i) => d ? ['M','T','W','Th','F','Sa','Su'][i] : '').filter(Boolean).join('/');
+                    csvContent += `"${child.name}","${chore.task}","${chore.room || ''}","${chore.time}","${chore.duration}","${days}"\n`;
                 });
             });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `chores-${block.title}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function prepareAndPrint() {
+            window.print();
+        }
+
+        function updateChoreBlockButton() {
+            const block = getActiveBlock();
+            if (!block) return;
+            const btn = document.getElementById('chore-block-btn');
+            btn.textContent = block.title;
+        }
+
+        function openChoreBlockModal() {
+            document.getElementById('chore-block-modal').classList.remove('hidden');
+            populateChoreBlockModal();
+        }
+
+        function closeChoreBlockModal() {
+            document.getElementById('chore-block-modal').classList.add('hidden');
+        }
+
+        function populateChoreBlockModal() {
+            const list = document.getElementById('chore-block-list');
+            list.innerHTML = '';
+            if (!appData || !appData.choreBlocks) return;
+            appData.choreBlocks.forEach(block => {
+                const button = document.createElement('button');
+                button.textContent = block.title;
+                button.className = `w-full text-left px-4 py-2 text-sm rounded-md ${block.id === appData.activeBlockId ? 'bg-indigo-600 text-white' : 'bg-white text-gray-900 hover:bg-gray-50'}`;
+                button.addEventListener('click', () => handleChoreBlockSelect(block.id));
+                list.appendChild(button);
+            });
+        }
+
+        function handleChoreBlockSelect(blockId) {
+            appData.activeBlockId = blockId;
+            saveData();
+            closeChoreBlockModal();
+            renderBoard();
+        }
+
+        function handleAddChoreBlock() {
+            const input = document.getElementById('new-chore-block-input');
+            const title = input.value.trim();
+            if (!title) return;
+            const newBlock = {
+                id: 'b' + Date.now(),
+                title: title,
+                chores: {}
+            };
+            appData.choreBlocks.push(newBlock);
+            appData.activeBlockId = newBlock.id;
+            input.value = '';
+            saveData();
+            closeChoreBlockModal();
+            renderBoard();
         }
     </script>
 </body>
-</ht
+</html>
